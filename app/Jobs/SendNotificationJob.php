@@ -1,11 +1,12 @@
 <?php
 
-// app/Jobs/SendNotificationJob.php
-
 namespace App\Jobs;
 
-use App\Models\User;
-use App\Notifications\MultiChannelNotification;
+use App\Models\ApiKey;
+use App\Models\NotificationLog;
+use App\Services\EmailService;
+use App\Services\WebPushService;
+use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,64 +20,64 @@ class SendNotificationJob implements ShouldQueue
 
     public $tries = 3;
     public $timeout = 120;
-    public $backoff = [10, 30, 60];
 
-    protected $userId;
-    protected $title;
-    protected $message;
-    protected $channels;
-    protected $actionUrl;
-
-    /**
-     * Create a new job instance.
-     */
     public function __construct(
-        int $userId,
-        string $title,
-        string $message,
-        array $channels = ['mail', 'webpush'],
-        ?string $actionUrl = null
-    ) {
-        $this->userId = $userId;
-        $this->title = $title;
-        $this->message = $message;
-        $this->channels = $channels;
-        $this->actionUrl = $actionUrl;
-    }
+        private int $apiKeyId,
+        private string $type,
+        private string $recipient,
+        private array $payload
+    ) {}
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        try {
-            $user = User::find($this->userId);
+        $apiKey = ApiKey::find($this->apiKeyId);
 
-            if (!$user) {
-                Log::error("User not found: {$this->userId}");
-                return;
+        if (!$apiKey) {
+            Log::error('API Key not found', ['api_key_id' => $this->apiKeyId]);
+            return;
+        }
+
+        // Create log entry
+        $log = NotificationLog::create([
+            'api_key_id' => $this->apiKeyId,
+            'type' => $this->type,
+            'recipient' => $this->recipient,
+            'status' => 'pending',
+            'payload' => $this->payload
+        ]);
+
+        try {
+            $result = match($this->type) {
+                'web_push' => app(WebPushService::class)->send($this->recipient, $this->payload),
+                'email' => app(EmailService::class)->send($this->recipient, $this->payload),
+                'whatsapp' => app(WhatsAppService::class)->send($this->recipient, $this->payload),
+                default => ['success' => false, 'message' => 'Invalid notification type']
+            };
+
+            if ($result['success']) {
+                $log->markAsSent();
+            } else {
+                $log->markAsFailed($result['message']);
             }
 
-            $user->notify(new MultiChannelNotification(
-                $this->title,
-                $this->message,
-                $this->channels,
-                $this->actionUrl
-            ));
-
-            Log::info("Notification sent successfully to user {$this->userId}");
-
         } catch (\Exception $e) {
-            Log::error("Failed to send notification: " . $e->getMessage());
-            throw $e; // Relancer pour retry automatique
+            $log->markAsFailed($e->getMessage());
+            Log::error('Notification job failed', [
+                'type' => $this->type,
+                'recipient' => $this->recipient,
+                'error' => $e->getMessage()
+            ]);
+            
+            throw $e; // Re-throw for retry
         }
     }
 
-    /**
-     * Handle a job failure.
-     */
     public function failed(\Throwable $exception): void
     {
-        Log::error("SendNotificationJob failed permanently for user {$this->userId}: " . $exception->getMessage());
+        Log::error('Notification job completely failed after retries', [
+            'type' => $this->type,
+            'recipient' => $this->recipient,
+            'error' => $exception->getMessage()
+        ]);
     }
 }
