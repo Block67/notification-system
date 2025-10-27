@@ -60,7 +60,7 @@ class ApiKey extends Model
             }
 
             if (empty($model->secret)) {
-                $model->secret = hash('sha256', bin2hex(random_bytes(32)));
+                $model->secret = hash('sha256', bin2hex(random_bytes(10)));
             }
         });
     }

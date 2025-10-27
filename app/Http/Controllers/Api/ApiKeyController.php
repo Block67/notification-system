@@ -29,10 +29,8 @@ class ApiKeyController extends Controller
 
         $permissions = $request->input('permissions', ['web_push', 'email', 'whatsapp']);
 
-        // Génération de la clé API au format sk_live_XXXXXXX
         $key = 'sk_live_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 7);
 
-        // Création de la clé API
         $apiKey = ApiKey::create([
             'name' => $request->input('name'),
             'key' => $key,
@@ -41,8 +39,7 @@ class ApiKeyController extends Controller
             'rate_limit' => $request->input('rate_limit', 1000),
         ]);
 
-        // Génération du secret
-        $plainSecret = \Illuminate\Support\Str::random(64);
+        $plainSecret = \Illuminate\Support\Str::random(20);
         $apiKey->update(['secret' => hash('sha256', $plainSecret)]);
 
         return response()->json([
@@ -52,7 +49,7 @@ class ApiKeyController extends Controller
                 'id' => $apiKey->id,
                 'name' => $apiKey->name,
                 'key' => $apiKey->key,
-                'secret' => $plainSecret, // IMPORTANT: Save this, it won't be shown again
+                'secret' => $plainSecret,
                 'permissions' => $apiKey->permissions,
                 'rate_limit' => $apiKey->rate_limit,
                 'created_at' => $apiKey->created_at
@@ -156,7 +153,7 @@ class ApiKeyController extends Controller
         ]);
     }
 
-    public function regenerateSecret(int $id): JsonResponse
+    public function regenerateSecret(string $id): JsonResponse
     {
         $apiKey = ApiKey::find($id);
 
@@ -167,17 +164,23 @@ class ApiKeyController extends Controller
             ], 404);
         }
 
-        $plainSecret = \Illuminate\Support\Str::random(64);
-        $apiKey->update(['secret' => hash('sha256', $plainSecret)]);
+        $newKey = 'sk_live_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 7);
+
+        $plainSecret = \Illuminate\Support\Str::random(20);
+
+        $apiKey->update([
+            'key' => $newKey,
+            'secret' => hash('sha256', $plainSecret)
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Secret regenerated successfully',
+            'message' => 'API key and secret regenerated successfully',
             'data' => [
                 'key' => $apiKey->key,
                 'secret' => $plainSecret
             ],
-            'warning' => 'Save the new secret securely. It will not be displayed again.'
+            'warning' => 'Save the new key and secret securely. They will not be displayed again.'
         ]);
     }
 }
