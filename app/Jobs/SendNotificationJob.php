@@ -3,17 +3,18 @@
 namespace App\Jobs;
 
 use App\Models\ApiKey;
-use App\Models\NotificationLog;
-use App\Services\EmailService;
-use App\Services\WebPushService;
-use App\Services\WhatsAppService;
-use App\Services\TelegramService;
 use Illuminate\Bus\Queueable;
+use App\Services\EmailService;
+use App\Models\NotificationLog;
+use App\Services\DiscordService;
+use App\Services\WebPushService;
+use App\Services\TelegramService;
+use App\Services\WhatsAppService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class SendNotificationJob implements ShouldQueue
 {
@@ -53,6 +54,7 @@ class SendNotificationJob implements ShouldQueue
                 'email' => app(EmailService::class)->send($this->recipient, $this->payload),
                 'whatsapp' => app(WhatsAppService::class)->send($this->recipient, $this->payload),
                 'telegram' => app(TelegramService::class)->send($this->recipient, $this->payload),
+                'discord' => app(DiscordService::class)->send($this->recipient, $this->payload),
                 default => ['success' => false, 'message' => 'Invalid notification type']
             };
 

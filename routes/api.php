@@ -45,6 +45,11 @@ Route::prefix('v1/notifications')->middleware('api.key')->group(function () {
         Route::post('send', [NotificationController::class, 'sendTelegram']);
     });
 
+    // Discord routes
+    Route::prefix('discord')->middleware('api.key:discord')->group(function () {
+        Route::post('send', [NotificationController::class, 'sendDiscord']);
+    });
+
     // Bulk send (requires appropriate permission)
     Route::post('bulk-send', [NotificationController::class, 'bulkSend']);
 

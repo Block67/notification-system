@@ -189,6 +189,41 @@ class NotificationController extends Controller
         return response()->json($result, $result['success'] ? 200 : 500);
     }
 
+    public function sendDiscord(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'channel_id' => 'required|string',
+            'body' => 'required|string',
+            'async' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $apiKey = $request->get('api_key');
+        $async = $request->input('async', true);
+        $payload = $request->only(['body']);
+
+        if ($async) {
+            SendNotificationJob::dispatch($apiKey->id, 'discord', $request->input('channel_id'), $payload);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Discord notification queued successfully'
+            ]);
+        }
+
+        $result = app(\App\Services\DiscordService::class)->send($request->input('channel_id'), $payload);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+
     public function bulkSend(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [

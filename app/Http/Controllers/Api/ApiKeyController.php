@@ -15,7 +15,7 @@ class ApiKeyController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'in:web_push,email,whatsapp,telegram',
+            'permissions.*' => 'in:web_push,email,whatsapp,telegram,discord',
             'rate_limit' => 'nullable|integer|min:100|max:100000'
         ]);
 
@@ -27,7 +27,7 @@ class ApiKeyController extends Controller
             ], 422);
         }
 
-        $permissions = $request->input('permissions', ['web_push', 'email', 'whatsapp']);
+        $permissions = $request->input('permissions', ['web_push', 'email', 'whatsapp', 'telegram', 'discord']);
 
         $key = 'sk_live_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 7);
 
@@ -113,7 +113,7 @@ class ApiKeyController extends Controller
             'name' => 'nullable|string|max:255',
             'is_active' => 'nullable|boolean',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'in:web_push,email,whatsapp',
+            'permissions.*' => 'in:web_push,email,whatsapp,telegram,discord',
             'rate_limit' => 'nullable|integer|min:100|max:100000'
         ]);
 
