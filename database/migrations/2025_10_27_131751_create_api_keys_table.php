@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('key')->unique();
             $table->string('secret');
             $table->boolean('is_active')->default(true);
-            $table->json('permissions')->nullable(); // ['web_push', 'email', 'whatsapp']
+            $table->json('permissions')->nullable(); // ['web_push', 'email', 'whatsapp', 'Telegram']
             $table->integer('rate_limit')->default(1000); // Requests per hour
             $table->timestamp('last_used_at')->nullable();
             $table->timestamps();

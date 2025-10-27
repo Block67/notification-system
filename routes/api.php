@@ -40,6 +40,11 @@ Route::prefix('v1/notifications')->middleware('api.key')->group(function () {
         Route::post('send', [NotificationController::class, 'sendWhatsApp']);
     });
 
+    // Telegram routes
+    Route::prefix('telegram')->middleware('api.key:telegram')->group(function () {
+        Route::post('send', [NotificationController::class, 'sendTelegram']);
+    });
+
     // Bulk send (requires appropriate permission)
     Route::post('bulk-send', [NotificationController::class, 'bulkSend']);
 

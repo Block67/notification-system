@@ -8,6 +8,7 @@ use App\Models\ApiKey;
 use App\Models\NotificationLog;
 use App\Models\PushSubscription;
 use App\Services\WebPushService;
+use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -59,7 +60,6 @@ class NotificationController extends Controller
             ]);
         }
 
-        // Synchronous sending
         $result = app(WebPushService::class)->send($request->input('endpoint'), $payload);
 
         return response()->json($result, $result['success'] ? 200 : 500);
@@ -103,8 +103,7 @@ class NotificationController extends Controller
             ]);
         }
 
-        $emailService = app(\App\Services\EmailService::class);
-        $result = $emailService->send($request->input('to'), $payload);
+        $result = app(\App\Services\EmailService::class)->send($request->input('to'), $payload);
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }
@@ -145,8 +144,47 @@ class NotificationController extends Controller
             ]);
         }
 
-        $whatsappService = app(\App\Services\WhatsAppService::class);
-        $result = $whatsappService->send($request->input('to'), $payload);
+        $result = app(\App\Services\WhatsAppService::class)->send($request->input('to'), $payload);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    public function sendTelegram(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'chat_id' => 'required|string',
+            'body' => 'required|string',
+            'async' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $apiKey = $request->get('api_key');
+        $async = $request->input('async', true);
+
+        $payload = $request->only(['body']);
+
+        if ($async) {
+            SendNotificationJob::dispatch(
+                $apiKey->id,
+                'telegram',
+                $request->input('chat_id'),
+                $payload
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Telegram notification queued successfully'
+            ]);
+        }
+
+        $result = app(TelegramService::class)->send($request->input('chat_id'), $payload);
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }
@@ -154,7 +192,7 @@ class NotificationController extends Controller
     public function bulkSend(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:web_push,email,whatsapp',
+            'type' => 'required|in:web_push,email,whatsapp,telegram',
             'recipients' => 'required|array|min:1|max:1000',
             'recipients.*' => 'required|string',
             'payload' => 'required|array'
@@ -261,6 +299,7 @@ class NotificationController extends Controller
                 'web_push' => NotificationLog::where('api_key_id', $apiKey->id)->where('type', 'web_push')->count(),
                 'email' => NotificationLog::where('api_key_id', $apiKey->id)->where('type', 'email')->count(),
                 'whatsapp' => NotificationLog::where('api_key_id', $apiKey->id)->where('type', 'whatsapp')->count(),
+                'telegram' => NotificationLog::where('api_key_id', $apiKey->id)->where('type', 'telegram')->count(),
             ],
             'last_24h' => NotificationLog::where('api_key_id', $apiKey->id)
                 ->where('created_at', '>=', now()->subDay())

@@ -7,6 +7,7 @@ use App\Models\NotificationLog;
 use App\Services\EmailService;
 use App\Services\WebPushService;
 use App\Services\WhatsAppService;
+use App\Services\TelegramService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,7 +38,7 @@ class SendNotificationJob implements ShouldQueue
             return;
         }
 
-        // Create log entry
+        // Créer une entrée de log
         $log = NotificationLog::create([
             'api_key_id' => $this->apiKeyId,
             'type' => $this->type,
@@ -51,6 +52,7 @@ class SendNotificationJob implements ShouldQueue
                 'web_push' => app(WebPushService::class)->send($this->recipient, $this->payload),
                 'email' => app(EmailService::class)->send($this->recipient, $this->payload),
                 'whatsapp' => app(WhatsAppService::class)->send($this->recipient, $this->payload),
+                'telegram' => app(TelegramService::class)->send($this->recipient, $this->payload),
                 default => ['success' => false, 'message' => 'Invalid notification type']
             };
 
@@ -68,7 +70,7 @@ class SendNotificationJob implements ShouldQueue
                 'error' => $e->getMessage()
             ]);
             
-            throw $e; // Re-throw for retry
+            throw $e; // Re-throw pour retry
         }
     }
 

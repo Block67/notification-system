@@ -15,7 +15,7 @@ class ApiKeyController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'in:web_push,email,whatsapp',
+            'permissions.*' => 'in:web_push,email,whatsapp,telegram',
             'rate_limit' => 'nullable|integer|min:100|max:100000'
         ]);
 
