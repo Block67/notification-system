@@ -28,13 +28,20 @@ class ApiKeyController extends Controller
         }
 
         $permissions = $request->input('permissions', ['web_push', 'email', 'whatsapp']);
-        $apiKey = ApiKey::generate($request->input('name'), $permissions);
 
-        if ($request->has('rate_limit')) {
-            $apiKey->update(['rate_limit' => $request->input('rate_limit')]);
-        }
+        // Génération de la clé API au format sk_live_XXXXXXX
+        $key = 'sk_live_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 7);
 
-        // Return the plain secret ONLY on creation
+        // Création de la clé API
+        $apiKey = ApiKey::create([
+            'name' => $request->input('name'),
+            'key' => $key,
+            'permissions' => $permissions,
+            'is_active' => true,
+            'rate_limit' => $request->input('rate_limit', 1000),
+        ]);
+
+        // Génération du secret
         $plainSecret = \Illuminate\Support\Str::random(64);
         $apiKey->update(['secret' => hash('sha256', $plainSecret)]);
 
